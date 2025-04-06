@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    environment {
+        GIT_REPO = 'https://github.com/rajeshrthiruvalla/static-html.git'  // GitHub repo URL
+        BRANCH = 'main'  // Branch name to deploy
+        EC2_USER = 'ubuntu'  // EC2 instance username (use 'ubuntu' if using Ubuntu on EC2)
+        EC2_IP = '13.203.196.35'  // EC2 public IP address
+        REMOTE_DIR = '/var/www/html'  // Apache web directory (update if necessary)
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    // Clone the GitHub repository
+                    git url: "${GIT_REPO}", branch: "${BRANCH}"
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                script {
+                    // SSH into EC2 and deploy files to the Apache server
+                    sshagent(['ec2']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_IP} 'rm -rf ${REMOTE_DIR}/*'
+                            scp -o StrictHostKeyChecking=no -r * ${EC2_USER}@${EC2_IP}:${REMOTE_DIR}
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Deployment Successful!'
+        }
+        failure {
+            echo 'Deployment Failed!'
+        }
+    }
+}
